@@ -1169,6 +1169,24 @@
       }
     }
 
+    // On GitHub Pages, read the data through the GitHub API first: it is fresh within about a minute,
+    // while the raw file can be cached for up to 5 minutes. Unchanged data is answered with "304 Not Modified",
+    // which does not count against GitHub's hourly limit. Falls back to the raw file if the API refuses.
+    async function fetchSharedData() {
+      if (IS_GITHUB_PAGES) {
+        const owner = window.location.hostname.split('.')[0];
+        const repo = window.location.pathname.split('/').filter(Boolean)[0] || (owner + '.github.io');
+        try {
+          const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/data.json?ref=data`, {
+            headers: { 'Accept': 'application/vnd.github.raw' },
+            cache: 'no-cache'
+          });
+          if (r.ok) return r;
+        } catch (e) {}
+      }
+      return fetch(getDataUrl(), { cache: 'no-store' });
+    }
+
     async function initLiveSync() {
       // 1. Public link info + health check (only on the local server, refreshed every 30s)
       if (!IS_GITHUB_PAGES && !isLockedReadOnly) {
@@ -1178,7 +1196,7 @@
 
       // 2. Fetch or initialize shared server data
       try {
-        const res = await fetch(getDataUrl(), { cache: 'no-store' });
+        const res = await fetchSharedData();
         if (res.ok) {
           const serverData = await res.json();
           if (serverData && serverData.empty) {
@@ -1220,7 +1238,7 @@
       setInterval(async () => {
         if (dragState) return;
         try {
-          const res = await fetch(getDataUrl(), { cache: 'no-store' });
+          const res = await fetchSharedData();
           if (!res.ok) return;
           const data = await res.json();
           if (Array.isArray(data)) {
