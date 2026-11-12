@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodiQ Product Launch Timeline</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 28px;
+      font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+      background-color: #f4f6fa;
+      color: #1e293b;
+      direction: ltr;
+    }
+
+    body.is-dragging {
+      user-select: none;
+      cursor: ew-resize !important;
+    }
+
+    .page-wrap {
+      max-width: 1500px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #ffffff;
+      border: 1px solid #d8e0ef;
+      border-radius: 12px;
+      padding: 16px 22px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    }
+
+    .top-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .readonly-badge {
+      display: none;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #f59e0b;
+    }
+
+    body.readonly-mode .readonly-badge {
+      display: inline-block;
+    }
+
+    .top-subtitle {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background: #f1f5f9;
+    }
+
+    .btn-primary {
+      background: #2b3c6b;
+      color: #ffffff;
+      border-color: #2b3c6b;
+    }
+
+    .btn-primary:hover {
+      background: #1e2b4f;
+    }
+
+    .btn-share {
+      background: #0ea5e9;
+      color: #ffffff;
+      border-color: #0ea5e9;
+    }
+
+    .btn-share:hover {
+      background: #0284c7;
+    }
+
+    .btn-danger {
+      color: #dc2626;
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .btn-danger:hover {
+      background: #fee2e2;
+    }
+
+    body.readonly-mode .edit-only {
+      display: none !important;
+    }
+
+    /* Helper Banner */
+    .helper-bar {
+      background: #eef4ff;
+      border: 1px solid #c7d9f8;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: #1e3a8a;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      color: #ffffff;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 200;
+      display: none;
+    }
+
+    /* Excel-like Table Container */
+    .excel-card {
+      background: #ffffff;
+      border: 1px solid #cfd8e8;
+      border-radius: 8px;
+      overflow-x: auto;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    table.roadmap-table {
+      width: 100%;
+      min-width: 1215px; /* keeps every month column wide enough for whole words; narrow screens scroll sideways */
+      border-collapse: collapse;
+      table-layout: fixed;
+      direction: ltr;
+      background: #ffffff;
+    }
+
+    table.roadmap-table th,
+    table.roadmap-table td {
+      border: 1px solid #d9e1f2;
+      padding: 0;
+      vertical-align: middle;
+      text-align: center;
+    }
+
+    /* Header Row */
+    table.roadmap-table thead th {
+      background-color: #2b3c6b;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      height: 42px;
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+
+    table.roadmap-table thead th.member-header {
+      width: 170px;
+      text-align: left;
+      padding-left: 14px;
+    }
+
+    table.roadmap-table thead th.sales-month {
+      border-top: 3px solid #ed7d31;
+    }
+
+    /* Body Rows */
+    table.roadmap-table tbody tr {
+      height: 76px;
+    }
+
+    td.member-name-cell {
+      background-color: #ffffff;
+      color: #1a6fb0;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: left !important;
+      padding: 10px 14px !important;
+      vertical-align: bottom !important;
+      white-space: normal;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    td.member-name-cell:hover {
+      background-color: #eff6ff;
+      color: #1e40af;
+      text-decoration: underline;
+    }
+
+    /* Empty Month Cell */
+    .empty-month-cell {
+      width: 100%;
+      height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: transparent;
+      font-size: 12px;
+      font-weight: 600;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    body:not(.readonly-mode) .empty-month-cell:hover {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    body.readonly-mode .empty-month-cell {
+      cursor: default;
+    }
+
+    /* Clickable & Resizable Task Cell */
+    .task-cell-box {
+      width: 100%;
+      height: 76px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      padding: 6px 20px;
+      transition: filter 0.12s ease, box-shadow 0.12s ease;
+      user-select: none;
+    }
+
+    .task-cell-box:hover {
+      box-shadow: inset 0 0 0 2px rgba(43, 60, 107, 0.55);
+    }
+
+    .task-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+      pointer-events: none;
+    }
+
+    /* Tasks that fit in a single month: tighter padding and smaller text so words don't touch the edges */
+    .task-cell-box.single-month {
+      padding: 6px 6px;
+    }
+    .task-cell-box.single-month .task-label {
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    /* Half-month cells */
+    table.roadmap-table td.half-second {
+      border-left-color: #f1f4fa;
+    }
+    table.roadmap-table tbody td:has(> .empty-month-cell):not(.half-second) {
+      border-right-color: #f1f4fa;
+    }
+    .task-cell-box.half-month {
+      padding: 4px 3px;
+    }
+    .task-cell-box.half-month .task-label {
+      font-size: 10.5px;
+      line-height: 1.2;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-cell-box.half-month .subtask-pill {
+      font-size: 10px;
+      padding: 0 4px;
+    }
+    .task-cell-box.half-month .resize-handle {
+      width: 9px;
+    }
+    .empty-month-cell {
+      font-size: 11px;
+    }
+
+    /* Never split a word in the middle */
+    .task-label {
+      overflow-wrap: normal;
+      word-break: keep-all;
+      hyphens: manual;
+    }
+    .task-cell-box.single-month .subtask-pill {
+      font-size: 11px;
+      padding: 1px 6px;
+    }
+
+    .subtask-pill {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      color: #1e293b;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      pointer-events: none;
+    }
+
+    /* Drag Resize Handles (Left & Right edges) */
+    .resize-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 14px;
+      cursor: ew-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease;
+      z-index: 10;
+      font-size: 12px;
+      font-weight: 900;
+      color: #1e293b;
+    }
+
+    .resize-handle::after {
+      content: '⋮';
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .resize-handle.left {
+      left: 0;
+      border-right: 1px dashed rgba(0,0,0,0.18);
+    }
+
+    .resize-handle.right {
+      right: 0;
+      border-left: 1px dashed rgba(0,0,0,0.18);
+    }
+
+    .task-cell-box:hover .resize-handle {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    .resize-handle:hover {
+      background: rgba(43, 60, 107, 0.25) !important;
+      color: #000;
+    }
+
+    /* Quick Delete Button on Task Corner */
+    .cell-actions {
+      position: absolute;
+      top: 4px;
+      right: 16px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 12;
+    }
+
+    .task-cell-box:hover .cell-actions {
+      opacity: 1;
+    }
+
+    .cell-icon-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      background: rgba(255, 255, 255, 0.92);
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .cell-icon-btn:hover {
+      background: #ffffff;
+      transform: scale(1.08);
+    }
+
+    .cell-icon-btn.del:hover {
+      background: #fee2e2;
+      color: #dc2626;
+      border-color: #f87171;
+    }
+
+    /* Task Styles matching Excel colors */
+    .style-arch { background-color: #fff2cc; color: #833c0c; }
+    .style-qa { background-color: #c5e0b4; color: #275317; }
+    .style-sync { background-color: #ede7f6; color: #5b2c98; }
+    .style-routes { background-color: #9fd3e3; color: #1f4e79; }
+    .style-bugs { background-color: #fce4d6; color: #c65911; }
+    .style-pdf { background-color: #ddebf7; color: #1f4e79; }
+    .style-dev { background-color: #e2efda; color: #375623; }
+    .style-sales { background-color: #fff2cc; color: #b45309; border: 2px solid #f59e0b; }
+
+    /* Modal Window */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 580px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 90vh;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 14px;
+    }
+
+    .modal-person {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a6fb0;
+    }
+
+    .modal-task-title {
+      margin: 4px 0 0 0;
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .modal-months {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .close-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .close-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .edit-task-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .subtasks-container {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      padding-right: 4px;
+    }
+
+    .subtask-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    body.readonly-mode .subtask-item {
+      cursor: default;
+    }
+
+    .subtask-item:hover {
+      border-color: #94a3b8;
+    }
+
+    .subtask-item.done {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    /* Drag & Drop styles for sub-tasks */
+    .subtask-item.dragging-subtask {
+      opacity: 0.45;
+      border: 2px dashed #2b3c6b;
+      background: #eff6ff;
+    }
+
+    .subtask-item.drag-over {
+      border-top: 3px solid #2563eb;
+      transform: translateY(2px);
+    }
+
+    .drag-grip {
+      color: #94a3b8;
+      font-size: 18px;
+      line-height: 1;
+      cursor: grab;
+      padding: 0 4px;
+      user-select: none;
+    }
+
+    .drag-grip:active {
+      cursor: grabbing;
+    }
+
+    .subtask-item:hover .drag-grip {
+      color: #475569;
+    }
+
+    .subtask-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .subtask-item.done .subtask-text {
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      text-decoration-color: #16a34a;
+      color: #64748b;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .text-input, .select-input {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      font-family: inherit;
+      color: #0f172a;
+      background: #ffffff;
+    }
+
+    .text-input {
+      flex: 1;
+    }
+
+    .text-input:focus, .select-input:focus {
+      outline: none;
+      border-color: #2b3c6b;
+    }
+
+    .empty-msg {
+      text-align: center;
+      padding: 28px 16px;
+      color: #64748b;
+      font-size: 14px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    /* Member Overview Card inside Modal */
+    .member-task-group {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .member-task-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .btn-whatsapp {
+      background: #25d366;
+      border-color: #25d366;
+      color: #ffffff;
+    }
+    .btn-whatsapp:hover {
+      background: #1ebe5b;
+    }
+    /* Compact sub-task window: more sub-tasks visible at once */
+    .subtask-card {
+      max-width: 760px;
+      max-height: 94vh;
+      padding: 16px 18px;
+      gap: 10px;
+    }
+    .subtask-card .modal-header {
+      padding-bottom: 8px;
+      align-items: center;
+    }
+    .subtask-card .modal-task-title {
+      margin: 0;
+      font-size: 18px;
+    }
+    .modal-meta {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .modal-meta .modal-person { font-size: 12px; }
+    .modal-meta .modal-months { margin-top: 0; }
+    .meta-sep { color: #94a3b8; }
+    .subtask-card .close-btn { width: 30px; height: 30px; font-size: 14px; }
+    .subtask-card .edit-task-bar {
+      flex-wrap: nowrap;
+      padding: 6px 8px;
+      gap: 6px;
+    }
+    .subtask-card .edit-task-bar .text-input { flex: 1; min-width: 0; }
+    .subtask-toolbar {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .subtask-card .subtasks-container {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      gap: 4px;
+    }
+    .subtask-card .subtask-item {
+      padding: 6px 10px;
+      border-radius: 8px;
+      gap: 8px;
+    }
+    .subtask-card .subtask-item > div { min-width: 0; }
+    .subtask-card .subtask-text {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    .subtask-delete {
+      padding: 2px 8px;
+      font-size: 12px;
+      flex-shrink: 0;
+      opacity: 0.35;
+    }
+    .subtask-item:hover .subtask-delete { opacity: 1; }
+    .subtask-card .input-row { padding-top: 8px; }
+    @media (max-width: 600px) {
+      .subtask-card .edit-task-bar { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-wrap">
+    <!-- Top Header -->
+    <div class="top-bar">
+      <div>
+        <h1 class="top-title">
+          <span>CodiQ Product Launch Timeline</span>
+          <span class="readonly-badge">👁️ Read-Only Mode (View Only)</span>
+        </h1>
+        <p class="top-subtitle" id="page-subtitle">
+          Click a Team Member's name or any task to view sub-tasks • Drag task edges (⋮) to stretch/shrink across months • Click ✕ to delete or click an empty cell to add.
+        </p>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn edit-only" id="undo-btn" onclick="undoLast()" style="display:none;">↩️ Undo</button>
+        <button class="btn btn-whatsapp edit-only" onclick="downloadReadOnlyFile()">📥 Download file to send</button>
+        <button class="btn btn-whatsapp edit-only" onclick="shareOnWhatsApp()">💬 Share on WhatsApp</button>
+        <button class="btn btn-share edit-only" onclick="copyReadOnlyLink()">🔗 Copy View-Only Link</button>
+        <button class="btn" id="toggle-preview-btn" onclick="toggleReadOnlyPreview()">👁️ Preview Read-Only Mode</button>
+        <button class="btn btn-danger edit-only" onclick="resetAll()">Reset to Default</button>
+      </div>
+    </div>
+
+    <!-- Live Link Banner (shown in Edit Mode) -->
+    <div class="helper-bar edit-only" id="live-link-bar" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span id="live-link-status">⏳ <strong>View-Only Link:</strong> checking...</span>
+        <code id="live-url-display" style="background:#ffffff;padding:4px 10px;border-radius:6px;border:1px solid #6ee7b7;font-size:13px;color:#047857;user-select:all;">Loading live link...</code>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-whatsapp" style="padding:6px 12px;font-size:12px;" onclick="shareOnWhatsApp()">💬 WhatsApp</button>
+        <button class="btn btn-share" style="padding:6px 12px;font-size:12px;" onclick="copyReadOnlyLink()">📋 Copy Link</button>
+      </div>
+    </div>
+
+    <!-- Instructions Helper Bar (hidden in read-only mode) -->
+    <div class="helper-bar edit-only">
+      <span><strong>💡 Quick Guide:</strong></span>
+      <span>👤 <strong>Member Overview:</strong> Click any person's name to see all their tasks</span>
+      <span>↔️ <strong>Stretch/Shrink Months:</strong> Drag the left or right edge (⋮) of any task</span>
+      <span>↕️ <strong>Reorder Sub-tasks:</strong> Drag any sub-task up or down using (⠿)</span>
+    </div>
+
+    <!-- Main Roadmap Table -->
+    <div class="excel-card">
+      <table class="roadmap-table" id="roadmap-table">
+        <colgroup>
+          <col style="width:170px;" />
+          <col span="18" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="member-header">Team Member</th>
+            <th colspan="2" data-month="0">Nov 2026</th>
+            <th colspan="2" data-month="1">Dec 2026</th>
+            <th colspan="2" data-month="2">Jan 2027</th>
+            <th colspan="2" data-month="3">Feb 2027</th>
+            <th colspan="2" data-month="4">Mar 2027</th>
+            <th colspan="2" data-month="5">Apr 2027</th>
+            <th colspan="2" data-month="6" class="sales-month">May 2027</th>
+            <th colspan="2" data-month="7">Jun 2027</th>
+            <th colspan="2" data-month="8">Jul 2027</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Single Task Sub-tasks Modal -->
+  <div id="subtask-modal" class="modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal-card subtask-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="modal-task" class="modal-task-title"></h3>
+          <div class="modal-meta">
+            <span id="modal-person" class="modal-person"></span>
+            <span class="meta-sep">·</span>
+            <span id="modal-months" class="modal-months"></span>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+
+      <!-- Edit Main Task Properties (Hidden in Read-Only) -->
+      <div class="edit-task-bar edit-only">
+        <input id="edit-main-title" class="text-input" type="text" title="Edit main task name" style="padding:6px 10px;font-size:13px;" onchange="updateMainTaskTitle()" />
+        <select id="edit-main-style" class="select-input" style="padding:6px 8px;font-size:13px;" onchange="updateMainTaskStyle()">
+          <option value="style-arch">Yellow (Architecture)</option>
+          <option value="style-qa">Green (QA)</option>
+          <option value="style-sync">Purple (Sync IP)</option>
+          <option value="style-routes">Cyan (Routes Logic)</option>
+          <option value="style-bugs">Orange (Bugs)</option>
+          <option value="style-pdf">Light Blue (PDF/Atlas)</option>
+          <option value="style-dev">Soft Green (Dev & Alignment)</option>
+          <option value="style-sales">Gold (Sales)</option>
+        </select>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" title="Delete this task" onclick="deleteActiveTaskFromModal()">🗑️</button>
+      </div>
+
+      <div class="subtask-toolbar">
+        <span id="modal-instruction">Sub-tasks List (Click to cross out • Drag ⠿ to reorder):</span>
+        <strong id="modal-count">0 / 0 Completed</strong>
+      </div>
+
+      <div id="subtasks-list" class="subtasks-container"></div>
+
+      <div class="input-row edit-only">
+        <input id="new-subtask-input" class="text-input" type="text" dir="auto" placeholder="Type a new sub-task and press Enter or Add..." onkeydown="if(event.key==='Enter') addSubtask()" />
+        <button class="btn btn-primary" onclick="addSubtask()">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Member Full Overview Modal (When clicking a person's name) -->
+  <div id="member-modal" class="modal-overlay" onclick="if(event.target===this) closeMemberModal()">
+    <div class="modal-card" style="max-width:620px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-person">Team Member Overview</div>
+          <h3 id="member-modal-name" class="modal-task-title"></h3>
+        </div>
+        <button class="close-btn" onclick="closeMemberModal()">✕</button>
+      </div>
+      <div id="member-modal-content" class="subtasks-container" style="max-height:420px;gap:14px;"></div>
+    </div>
+  </div>
+
+  <!-- Add New Main Task Modal -->
+  <div id="add-task-modal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
+    <div class="modal-card" style="max-width:440px;">
+      <div class="modal-header">
+        <div>
+          <div id="add-task-person" class="modal-person"></div>
+          <h3 style="margin:4px 0 0 0;font-size:18px;font-weight:800;">Add New Task to Table</h3>
+        </div>
+        <button class="close-btn" onclick="closeAddTaskModal()">✕</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Select a task or type a custom name:</label>
+          <input id="new-task-title" class="text-input" style="width:100%;" type="text" list="known-tasks-list" placeholder="e.g., Arcitecture refacturing, QA..." onkeydown="if(event.key==='Enter') confirmAddNewTask()" />
+          <datalist id="known-tasks-list">
+            <option value="Arcitecture refacturing"></option>
+            <option value="QA"></option>
+            <option value="Synchronisation (IP)"></option>
+            <option value="Routes Triggers (Logic)"></option>
+            <option value="fix library bugs+PDF import"></option>
+            <option value="PDF Import+Atlas"></option>
+            <option value="fix library bugs"></option>
+            <option value="Dev & Alignment"></option>
+            <option value="Sales"></option>
+          </datalist>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;">
+          <label style="font-size:13px;font-weight:600;">Task Color:</label>
+          <select id="new-task-style" class="select-input" style="flex:1;">
+            <option value="style-arch">Yellow (Architecture)</option>
+            <option value="style-qa">Green (QA)</option>
+            <option value="style-sync">Purple (Sync IP)</option>
+            <option value="style-routes">Cyan (Routes Logic)</option>
+            <option value="style-bugs">Orange (Bugs)</option>
+            <option value="style-pdf">Light Blue (PDF/Atlas)</option>
+            <option value="style-dev">Soft Green (Dev & Alignment)</option>
+            <option value="style-sales">Gold (Sales)</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="confirmAddNewTask()">+ Add to Table</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const MONTHS = [
+      'Nov 2026', 'Dec 2026', 'Jan 2027', 'Feb 2027',
+      'Mar 2027', 'Apr 2027', 'May 2027', 'Jun 2027', 'Jul 2027'
+    ];
+
+    function defaultArchSubtasks() {
+      return [
+        { id: 1, text: 'Control Modules', done: false },
+        { id: 2, text: 'Logs', done: false },
+        { id: 3, text: 'Routes Configuration', done: false },
+        { id: 4, text: 'Verification (Cross-Reference)', done: false },
+        { id: 5, text: 'Update', done: false }
+      ];
+    }
+
+    const INITIAL_ROWS = [
+      {
+        member: 'Uladzislau Kaminski',
+        tasks: [
+          { id: 'u_arch', title: 'Arcitecture refacturing', style: 'style-arch', start: 0, end: 0, subtasks: defaultArchSubtasks() },
+          { id: 'u_sync', title: 'Synchronisation (IP)', style: 'style-sync', start: 4, end: 5, subtasks: [] },
+          { id: 'u_routes', title: 'Routes Triggers (Logic)', style: 'style-routes', start: 6, end: 6, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Vitaly Sheluto',
+        tasks: [
+          { id: 'v_arch', title: 'Arcitecture refacturing', style: 'style-arch', start: 0, end: 2, subtasks: defaultArchSubtasks() },
+          { id: 'v_qa', title: 'QA', style: 'style-qa', start: 3, end: 3, subtasks: [] },
+          { id: 'v_sync', title: 'Synchronisation (IP)', style: 'style-sync', start: 4, end: 5, subtasks: [] },
+          { id: 'v_routes', title: 'Routes Triggers (Logic)', style: 'style-routes', start: 6, end: 6, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Dmitry Magonov',
+        tasks: [
+          { id: 'd_arch', title: 'Arcitecture refacturing', style: 'style-arch', start: 0, end: 2, subtasks: defaultArchSubtasks() },
+          { id: 'd_qa', title: 'QA', style: 'style-qa', start: 3, end: 3, subtasks: [] },
+          { id: 'd_sync', title: 'Synchronisation (IP)', style: 'style-sync', start: 4, end: 5, subtasks: [] },
+          { id: 'd_routes', title: 'Routes Triggers (Logic)', style: 'style-routes', start: 6, end: 6, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Alon Gonen',
+        tasks: [
+          { id: 'a_bugs_pdf', title: 'fix library bugs+PDF import', style: 'style-bugs', start: 0, end: 1, subtasks: [] },
+          { id: 'a_qa', title: 'QA', style: 'style-qa', start: 2, end: 2, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Shai Gros',
+        tasks: [
+          { id: 's_pdf', title: 'PDF Import+Atlas', style: 'style-pdf', start: 0, end: 1, subtasks: [] },
+          { id: 's_qa', title: 'QA', style: 'style-qa', start: 2, end: 2, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Oren Leibovitz',
+        tasks: [
+          { id: 'o_bugs', title: 'fix library bugs', style: 'style-bugs', start: 0, end: 1, subtasks: [] },
+          { id: 'o_qa', title: 'QA', style: 'style-qa', start: 2, end: 2, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Dan Ohaion',
+        tasks: [
+          { id: 'da_bugs', title: 'fix library bugs', style: 'style-bugs', start: 0, end: 1, subtasks: [] },
+          { id: 'da_qa', title: 'QA', style: 'style-qa', start: 2, end: 2, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Igor Taren',
+        tasks: [
+          { id: 'i_qa', title: 'QA', style: 'style-qa', start: 0, end: 1, subtasks: [] }
+        ]
+      },
+      {
+        member: 'Oleg+Javier+Slava+Guy',
+        tasks: [
+          { id: 'oj_dev', title: 'Dev & Alignment', style: 'style-dev', start: 0, end: 5, subtasks: [] },
+          { id: 'oj_sales', title: 'Sales', style: 'style-sales', start: 6, end: 6, subtasks: [] }
+        ]
+      }
+    ];
+
+    const urlParams = new URLSearchParams(window.location.search);
+    // Editing is only possible on your own computer. Any other address (GitHub Pages, tunnels) is always view-only.
+    const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]', '::1', ''];
+    const IS_LOCAL = LOCAL_HOSTS.includes(window.location.hostname);
+    const IS_GITHUB_PAGES = window.location.hostname.endsWith('.github.io');
+    const POLL_MS = IS_GITHUB_PAGES ? 60000 : 2500;
+    let isLockedReadOnly = !IS_LOCAL || urlParams.get('readonly') === '1' || window.FORCE_READONLY === true;
+    let isReadOnly = isLockedReadOnly;
+
+    let historyStack = [];
+    let rowsData = loadDataAndRecover();
+    let activeTaskRef = null;
+    let activeMemberIdx = null;
+    let pendingAddSlot = null;
+    let dragState = null;
+    let draggedSubtaskIdx = null;
+    let livePublicBaseUrl = '';
+    let lastServerJson = '';
+
+    function loadDataAndRecover() {
+      if (window.EMBEDDED_STATE) {
+        return JSON.parse(JSON.stringify(window.EMBEDDED_STATE));
+      }
+      if (window.location.hash && window.location.hash.startsWith('#view=')) {
+        try {
+          const b64 = window.location.hash.replace('#view=', '');
+          const json = decodeURIComponent(escape(atob(b64)));
+          isLockedReadOnly = true;
+          isReadOnly = true;
+          return JSON.parse(json);
+        } catch (e) {}
+      }
+
+      let base = JSON.parse(JSON.stringify(INITIAL_ROWS));
+      try {
+        const savedV6 = localStorage.getItem('core_tasks_draggable_v6');
+        if (savedV6) base = JSON.parse(savedV6);
+      } catch (e) {}
+
+      const recoveredById = {};
+      const oldKeys = ['core_tasks_exact_v3', 'core_tasks_full_v4', 'core_tasks_full_v5'];
+      oldKeys.forEach(k => {
+        try {
+          const raw = localStorage.getItem(k);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return;
+          parsed.forEach(r => {
+            const list = r.cells || r.tasks || [];
+            list.forEach(item => {
+              if (item && item.id && Array.isArray(item.subtasks) && item.subtasks.length > 0) {
+                recoveredById[item.id] = item.subtasks;
+              }
+            });
+          });
+        } catch (e) {}
+      });
+
+      let restoredAny = false;
+      base.forEach(row => {
+        (row.tasks || []).forEach(task => {
+          if (recoveredById[task.id]) {
+            if (!task.subtasks || task.subtasks.length === 0) {
+              task.subtasks = recoveredById[task.id];
+              restoredAny = true;
+            }
+          }
+        });
+      });
+
+      if (restoredAny) {
+        try {
+          localStorage.setItem('core_tasks_draggable_v6', JSON.stringify(base));
+        } catch (e) {}
+        setTimeout(() => showToast('✓ Restored your saved sub-tasks!'), 300);
+      }
+
+      return base;
+    }
+
+    function pushHistory() {
+      historyStack.push(JSON.stringify(rowsData));
+      if (historyStack.length > 25) historyStack.shift();
+      const undoBtn = document.getElementById('undo-btn');
+      if (undoBtn) undoBtn.style.display = 'inline-block';
+    }
+
+    function undoLast() {
+      if (isReadOnly || historyStack.length === 0) return;
+      rowsData = JSON.parse(historyStack.pop());
+      saveData();
+      if (activeTaskRef) renderSubtasks();
+      if (historyStack.length === 0) {
+        document.getElementById('undo-btn').style.display = 'none';
+      }
+      showToast('↩️ Undid last action');
+    }
+
+    function saveData() {
+      if (isReadOnly) return;
+      const jsonStr = JSON.stringify(rowsData);
+      lastServerJson = jsonStr;
+      try {
+        localStorage.setItem('core_tasks_draggable_v6', jsonStr);
+      } catch (e) {}
+      syncToServer(jsonStr);
+      renderTable();
+    }
+
+    async function syncToServer(jsonStr) {
+      try {
+        await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: jsonStr || JSON.stringify(rowsData)
+        });
+      } catch (e) {}
+    }
+
+    // On GitHub Pages the data lives on the "data" branch, read straight from GitHub (no rebuild needed).
+    function getDataUrl() {
+      if (IS_GITHUB_PAGES) {
+        const owner = window.location.hostname.split('.')[0];
+        const repo = window.location.pathname.split('/').filter(Boolean)[0] || (owner + '.github.io');
+        return `https://raw.githubusercontent.com/${owner}/${repo}/data/data.json?t=${Date.now()}`;
+      }
+      return '/api/data?t=' + Date.now();
+    }
+
+    let linkIsLive = false;
+    async function refreshLinkStatus() {
+      const statusEl = document.getElementById('live-link-status');
+      const urlDisplay = document.getElementById('live-url-display');
+      const bar = document.getElementById('live-link-bar');
+      let url = '';
+      try {
+        const infoRes = await fetch('/api/info?t=' + Date.now(), { cache: 'no-store' });
+        if (infoRes.ok) url = ((await infoRes.json()).publicUrl || '').replace(/\/$/, '');
+      } catch (e) {}
+      livePublicBaseUrl = url;
+      let ok = false;
+      if (url) {
+        try {
+          const ctrl = new AbortController();
+          setTimeout(() => ctrl.abort(), 8000);
+          if (url.includes('github.io')) {
+            // GitHub Pages: an opaque (no-cors) response means the page is reachable
+            await fetch(url + '/?t=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal });
+            ok = true;
+          } else {
+            const r = await fetch(url + '/api/info?t=' + Date.now(), { cache: 'no-store', signal: ctrl.signal });
+            ok = r.ok;
+          }
+        } catch (e) { ok = false; }
+      }
+      linkIsLive = ok;
+      if (urlDisplay) urlDisplay.textContent = url ? getShareUrl() : '—';
+      if (statusEl && bar) {
+        if (ok) {
+          statusEl.innerHTML = '🟢 <strong>View-Only Link is live.</strong> Viewers see changes in real time but cannot edit.';
+          bar.style.background = '#ecfdf5'; bar.style.borderColor = '#a7f3d0'; bar.style.color = '#065f46';
+        } else {
+          statusEl.innerHTML = '🔴 <strong>View-Only Link is not working right now.</strong> It fixes itself within about a minute; if not, double-click "Open Dashboard" on your desktop. The link address may change.';
+          bar.style.background = '#fef2f2'; bar.style.borderColor = '#fecaca'; bar.style.color = '#991b1b';
+        }
+      }
+    }
+
+    async function initLiveSync() {
+      // 1. Public link info + health check (only on the local server, refreshed every 30s)
+      if (!IS_GITHUB_PAGES && !isLockedReadOnly) {
+        await refreshLinkStatus();
+        setInterval(refreshLinkStatus, 30000);
+      }
+
+      // 2. Fetch or initialize shared server data
+      try {
+        const res = await fetch(getDataUrl(), { cache: 'no-store' });
+        if (res.ok) {
+          const serverData = await res.json();
+          if (serverData && serverData.empty) {
+            // First time server starts: upload our local data (including recovered subtasks)
+            if (!isReadOnly) {
+              await syncToServer(JSON.stringify(rowsData));
+            }
+          } else if (Array.isArray(serverData)) {
+            if (isReadOnly) {
+              rowsData = serverData;
+              lastServerJson = JSON.stringify(serverData);
+              renderTable();
+            } else {
+              // Merge any local subtasks into serverData if serverData was missing them
+              let merged = false;
+              rowsData.forEach((localRow, rIdx) => {
+                const sRow = serverData[rIdx];
+                if (!sRow) return;
+                (localRow.tasks || []).forEach(lTask => {
+                  const sTask = (sRow.tasks || []).find(t => t.id === lTask.id);
+                  if (sTask && (!sTask.subtasks || sTask.subtasks.length === 0) && lTask.subtasks && lTask.subtasks.length > 0) {
+                    sTask.subtasks = lTask.subtasks;
+                    merged = true;
+                  }
+                });
+              });
+              rowsData = serverData;
+              const finalJson = JSON.stringify(rowsData);
+              lastServerJson = finalJson;
+              localStorage.setItem('core_tasks_draggable_v6', finalJson);
+              if (merged) await syncToServer(finalJson);
+              renderTable();
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 3. Poll every 2.5 seconds so Read-Only viewers (and multiple tabs) see live changes immediately
+      setInterval(async () => {
+        if (dragState) return;
+        try {
+          const res = await fetch(getDataUrl(), { cache: 'no-store' });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const newJson = JSON.stringify(data);
+            if (newJson !== lastServerJson) {
+              lastServerJson = newJson;
+              rowsData = data;
+              renderTable();
+              if (activeTaskRef) renderSubtasks();
+              if (activeMemberIdx !== null && document.getElementById('member-modal').classList.contains('open')) {
+                openMemberOverview(activeMemberIdx);
+              }
+            }
+          }
+        } catch (e) {}
+      }, POLL_MS);
+    }
+
+    function applyReadOnlyUI() {
+      if (isReadOnly) {
+        document.body.classList.add('readonly-mode');
+        document.getElementById('page-subtitle').textContent =
+          'Read-Only Mode: Click on your name (or on any task in the table) to view your tasks and sub-tasks.';
+        document.getElementById('modal-instruction').textContent =
+          'Sub-tasks List (Read-Only Mode):';
+        const btn = document.getElementById('toggle-preview-btn');
+        if (isLockedReadOnly) {
+          btn.style.display = 'none';
+        } else {
+          btn.textContent = '✏️ Back to Edit Mode';
+        }
+      } else {
+        document.body.classList.remove('readonly-mode');
+        document.getElementById('page-subtitle').textContent =
+          'Click a Team Member\'s name or any task to view sub-tasks • Drag task edges (⋮) to stretch/shrink across months • Click ✕ to delete or click an empty cell to add.';
+        document.getElementById('modal-instruction').textContent =
+          'Sub-tasks List (Click to cross out • Drag ⠿ to reorder):';
+        document.getElementById('toggle-preview-btn').textContent = '👁️ Preview Read-Only Mode';
+      }
+      renderTable();
+    }
+
+    function toggleReadOnlyPreview() {
+      if (isLockedReadOnly) return;
+      isReadOnly = !isReadOnly;
+      applyReadOnlyUI();
+      if (activeTaskRef) renderSubtasks();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3200);
+    }
+
+    function getShareUrl() {
+      if (IS_GITHUB_PAGES) return window.location.origin + window.location.pathname;
+      if (!livePublicBaseUrl) return '';
+      // GitHub Pages is view-only by itself; other addresses get the readonly flag too
+      return livePublicBaseUrl.includes('github.io') ? livePublicBaseUrl : `${livePublicBaseUrl.replace(/\/$/, '')}/?readonly=1`;
+    }
+
+    function copyReadOnlyLink() {
+      const shareUrl = getShareUrl();
+      if (!IS_GITHUB_PAGES && !linkIsLive) {
+        showToast('⚠️ The view-only link is not working right now. Try again in a minute.');
+        return;
+      }
+      if (!shareUrl) {
+        showToast('⚠️ Sharing is not set up yet (run start-sharing.bat)');
+        return;
+      }
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast('✓ View-only link copied to clipboard!');
+      });
+    }
+
+    function shareOnWhatsApp() {
+      const shareUrl = getShareUrl();
+      if (!IS_GITHUB_PAGES && !linkIsLive) {
+        showToast('⚠️ The view-only link is not working right now. Try again in a minute.');
+        return;
+      }
+      if (!shareUrl) {
+        showToast('⚠️ Sharing is not set up yet (run start-sharing.bat)');
+        return;
+      }
+      const text = `📊 CodiQ Product Launch Timeline (view only):\n${shareUrl}`;
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+
+    function downloadReadOnlyFile() {
+      const cloneDoc = document.documentElement.outerHTML;
+      const stateScript = `<script>window.FORCE_READONLY = true; window.EMBEDDED_STATE = ${JSON.stringify(rowsData)};<\/script>`;
+      const finalHtml = cloneDoc.replace('<head>', '<head>' + stateScript);
+      const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'CodiQ-Timeline-' + new Date().toISOString().slice(0,10) + '.html';
+      a.click();
+      showToast('✓ File saved to Downloads. Attach it in WhatsApp.');
+    }
+
+    function getMonthsLabel(start, end) {
+      if (start === end) return MONTHS[start];
+      return `${MONTHS[start]} – ${MONTHS[end]}`;
+    }
+
+    // ---- Half-month support ----
+    // Each month has two halves. hs/he are the first/last half (0..17, inclusive).
+    // start/end (whole months) are kept in sync so all month labels stay exactly the same.
+    const HALVES = MONTHS.length * 2;
+    function getHS(t) { return Number.isInteger(t.hs) ? t.hs : t.start * 2; }
+    function getHE(t) { return Number.isInteger(t.he) ? t.he : t.end * 2 + 1; }
+    function setHalves(t, hs, he) {
+      t.hs = hs;
+      t.he = he;
+      t.start = Math.floor(hs / 2);
+      t.end = Math.floor(he / 2);
+    }
+    function halfIsFree(row, h) {
+      return !row.tasks.some(t => getHS(t) <= h && h <= getHE(t));
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      rowsData.forEach((row, rIdx) => {
+        row.tasks.sort((a, b) => getHS(a) - getHS(b));
+
+        const tr = document.createElement('tr');
+        const tdMember = document.createElement('td');
+        tdMember.className = 'member-name-cell';
+        tdMember.title = `Click to view all tasks for ${row.member}`;
+        // Allow long joined names (A+B+C) to wrap after each "+" instead of being cut off
+        tdMember.innerHTML = String(row.member)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/\+/g, '+<wbr>');
+        tdMember.onclick = () => openMemberOverview(rIdx);
+        tr.appendChild(tdMember);
+
+        let h = 0;
+        while (h < HALVES) {
+          const tIdx = row.tasks.findIndex(t => getHS(t) === h);
+          if (tIdx !== -1) {
+            const task = row.tasks[tIdx];
+            const halfSpan = getHE(task) - getHS(task) + 1;
+            const td = document.createElement('td');
+            td.colSpan = halfSpan;
+
+            const subs = task.subtasks || [];
+            const doneCount = subs.filter(s => s.done).length;
+
+            const box = document.createElement('div');
+            box.className = `task-cell-box ${task.style}${halfSpan <= 2 ? ' single-month' : ''}${halfSpan === 1 ? ' half-month' : ''}`;
+            box.title = task.title;
+            box.onclick = (e) => {
+              if (dragState && dragState.moved) return;
+              openModal(rIdx, tIdx);
+            };
+
+            let badgeHtml = '';
+            if (subs.length > 0) {
+              badgeHtml = `<span class="subtask-pill">${doneCount}/${subs.length} Done</span>`;
+            }
+
+            let controlsHtml = '';
+            if (!isReadOnly) {
+              controlsHtml = `
+                <div class="resize-handle left" title="Drag left or right to change start month" onmousedown="startResize(event, ${rIdx}, ${tIdx}, 'start')"></div>
+                <div class="resize-handle right" title="Drag left or right to change end month" onmousedown="startResize(event, ${rIdx}, ${tIdx}, 'end')"></div>
+                <div class="cell-actions">
+                  <button class="cell-icon-btn del" title="Delete this task" onclick="quickDeleteTask(event, ${rIdx}, ${tIdx})">✕</button>
+                </div>
+              `;
+            }
+
+            box.innerHTML = `
+              ${controlsHtml}
+              <div class="task-label">${task.title}</div>
+              ${badgeHtml}
+            `;
+            td.appendChild(box);
+            tr.appendChild(td);
+            h = getHE(task) + 1;
+          } else {
+            const currentHalf = h;
+            const td = document.createElement('td');
+            if (h % 2 === 1) td.className = 'half-second';
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-month-cell';
+            emptyDiv.textContent = isReadOnly ? '' : '+ Add';
+            if (!isReadOnly) {
+              emptyDiv.onclick = () => openAddTaskModal(rIdx, currentHalf);
+            }
+            td.appendChild(emptyDiv);
+            tr.appendChild(td);
+            h++;
+          }
+        }
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Open Member Overview Modal when clicking a person's name
+    function openMemberOverview(rowIdx) {
+      activeMemberIdx = rowIdx;
+      const row = rowsData[rowIdx];
+      document.getElementById('member-modal-name').textContent = row.member;
+      const container = document.getElementById('member-modal-content');
+      container.innerHTML = '';
+
+      if (!row.tasks || row.tasks.length === 0) {
+        container.innerHTML = `<div class="empty-msg">No tasks assigned to ${row.member}.</div>`;
+      } else {
+        row.tasks.forEach((task, tIdx) => {
+          const subs = task.subtasks || [];
+          const doneCount = subs.filter(s => s.done).length;
+          const card = document.createElement('div');
+          card.className = 'member-task-group';
+
+          let subsHtml = '';
+          if (subs.length === 0) {
+            subsHtml = `<div style="font-size:13px;color:#64748b;">No sub-tasks defined.</div>`;
+          } else {
+            subsHtml = subs.map(s => `
+              <div class="subtask-item ${s.done ? 'done' : ''}" style="padding:8px 12px;cursor:default;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="checkbox" ${s.done ? 'checked' : ''} disabled style="width:16px;height:16px;accent-color:#16a34a;" />
+                  <span class="subtask-text" style="font-size:14px;" dir="auto">${s.text}</span>
+                </div>
+              </div>
+            `).join('');
+          }
+
+          card.innerHTML = `
+            <div class="member-task-header">
+              <div>
+                <strong style="font-size:16px;color:#0f172a;">${task.title}</strong>
+                <div style="font-size:12px;color:#64748b;">Months: ${getMonthsLabel(task.start, task.end)} • ${doneCount}/${subs.length} Completed</div>
+              </div>
+              <button class="btn" style="padding:5px 10px;font-size:12px;" onclick="closeMemberModal(); openModal(${rowIdx}, ${tIdx});">
+                ${isReadOnly ? 'View Task' : 'Open & Edit'}
+              </button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              ${subsHtml}
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById('member-modal').classList.add('open');
+    }
+
+    function closeMemberModal() {
+      document.getElementById('member-modal').classList.remove('open');
+    }
+
+    function startResize(e, rowIdx, taskIdx, edge) {
+      if (isReadOnly) return;
+      e.stopPropagation();
+      e.preventDefault();
+
+      pushHistory();
+
+      const tasks = rowsData[rowIdx].tasks;
+      const prevTask = taskIdx > 0 ? tasks[taskIdx - 1] : null;
+      const nextTask = taskIdx < tasks.length - 1 ? tasks[taskIdx + 1] : null;
+
+      const minHalf = prevTask ? getHE(prevTask) + 1 : 0;
+      const maxHalf = nextTask ? getHS(nextTask) - 1 : HALVES - 1;
+
+      dragState = {
+        rowIdx,
+        taskIdx,
+        edge,
+        minHalf,
+        maxHalf,
+        moved: false
+      };
+
+      document.body.classList.add('is-dragging');
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragState) return;
+
+      const headers = document.querySelectorAll('#roadmap-table thead th[data-month]');
+      let hoveredHalf = null;
+      headers.forEach(th => {
+        const rect = th.getBoundingClientRect();
+        if (e.clientX >= rect.left && e.clientX <= rect.right) {
+          const month = parseInt(th.getAttribute('data-month'), 10);
+          const inSecondHalf = e.clientX >= rect.left + rect.width / 2;
+          hoveredHalf = month * 2 + (inSecondHalf ? 1 : 0);
+        }
+      });
+
+      if (hoveredHalf === null) return;
+
+      const task = rowsData[dragState.rowIdx].tasks[dragState.taskIdx];
+      const hs = getHS(task), he = getHE(task);
+      if (dragState.edge === 'end') {
+        const clamped = Math.max(hs, Math.min(dragState.maxHalf, hoveredHalf));
+        if (clamped !== he) {
+          setHalves(task, hs, clamped);
+          dragState.moved = true;
+          renderTable();
+        }
+      } else if (dragState.edge === 'start') {
+        const clamped = Math.min(he, Math.max(dragState.minHalf, hoveredHalf));
+        if (clamped !== hs) {
+          setHalves(task, clamped, he);
+          dragState.moved = true;
+          renderTable();
+        }
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragState) return;
+      document.body.classList.remove('is-dragging');
+      if (dragState.moved) {
+        saveData();
+      } else {
+        historyStack.pop();
+      }
+      setTimeout(() => { dragState = null; }, 50);
+    });
+
+    function quickDeleteTask(e, rowIdx, taskIdx) {
+      e.stopPropagation();
+      if (isReadOnly) return;
+      pushHistory();
+      const removed = rowsData[rowIdx].tasks.splice(taskIdx, 1)[0];
+      saveData();
+      showToast(`🗑️ Task "${removed.title}" deleted (Click Undo to restore)`);
+    }
+
+    function openAddTaskModal(rowIdx, halfIdx) {
+      if (isReadOnly) return;
+      const monthIdx = Math.floor(halfIdx / 2);
+      pendingAddSlot = { rowIdx, monthIdx, halfIdx };
+      document.getElementById('add-task-person').textContent =
+        `${rowsData[rowIdx].member} • ${MONTHS[monthIdx]}`;
+      document.getElementById('new-task-title').value = '';
+      document.getElementById('add-task-modal').classList.add('open');
+      setTimeout(() => document.getElementById('new-task-title').focus(), 50);
+    }
+
+    function confirmAddNewTask() {
+      if (!pendingAddSlot) return;
+      const title = document.getElementById('new-task-title').value.trim();
+      if (!title) return;
+
+      let style = document.getElementById('new-task-style').value;
+      if (title === 'Arcitecture refacturing') style = 'style-arch';
+      else if (title === 'QA') style = 'style-qa';
+      else if (title === 'Synchronisation (IP)') style = 'style-sync';
+      else if (title === 'Routes Triggers (Logic)') style = 'style-routes';
+
+      pushHistory();
+      // New task fills the whole month when both halves are free, otherwise just the clicked half
+      const addRow = rowsData[pendingAddSlot.rowIdx];
+      const m2 = pendingAddSlot.monthIdx * 2;
+      const fullMonthFree = halfIsFree(addRow, m2) && halfIsFree(addRow, m2 + 1);
+      const newTask = {
+        id: 't_' + Date.now(),
+        title,
+        style,
+        subtasks: title === 'Arcitecture refacturing' ? defaultArchSubtasks() : []
+      };
+      if (fullMonthFree) setHalves(newTask, m2, m2 + 1);
+      else setHalves(newTask, pendingAddSlot.halfIdx, pendingAddSlot.halfIdx);
+      addRow.tasks.push(newTask);
+      saveData();
+      closeAddTaskModal();
+    }
+
+    function closeAddTaskModal() {
+      document.getElementById('add-task-modal').classList.remove('open');
+      pendingAddSlot = null;
+    }
+
+    function openModal(rowIdx, taskIdx) {
+      activeTaskRef = { rowIdx, taskIdx };
+      const row = rowsData[rowIdx];
+      const task = row.tasks[taskIdx];
+
+      document.getElementById('modal-person').textContent = row.member;
+      document.getElementById('modal-task').textContent = task.title;
+      document.getElementById('modal-months').textContent = getMonthsLabel(task.start, task.end);
+
+      document.getElementById('edit-main-title').value = task.title;
+      document.getElementById('edit-main-style').value = task.style;
+
+      renderSubtasks();
+      document.getElementById('subtask-modal').classList.add('open');
+      if (!isReadOnly) {
+        setTimeout(() => document.getElementById('new-subtask-input').focus(), 50);
+      }
+    }
+
+    function updateMainTaskTitle() {
+      if (isReadOnly || !activeTaskRef) return;
+      const val = document.getElementById('edit-main-title').value.trim();
+      if (!val) return;
+      pushHistory();
+      const task = rowsData[activeTaskRef.rowIdx].tasks[activeTaskRef.taskIdx];
+      task.title = val;
+      document.getElementById('modal-task').textContent = val;
+      saveData();
+    }
+
+    function updateMainTaskStyle() {
+      if (isReadOnly || !activeTaskRef) return;
+      pushHistory();
+      const task = rowsData[activeTaskRef.rowIdx].tasks[activeTaskRef.taskIdx];
+      task.style = document.getElementById('edit-main-style').value;
+      saveData();
+    }
+
+    function deleteActiveTaskFromModal() {
+      if (isReadOnly || !activeTaskRef) return;
+      pushHistory();
+      rowsData[activeTaskRef.rowIdx].tasks.splice(activeTaskRef.taskIdx, 1);
+      saveData();
+      closeModal();
+      showToast('🗑️ Task deleted from table');
+    }
+
+    function renderSubtasks() {
+      if (!activeTaskRef) return;
+      const task = rowsData[activeTaskRef.rowIdx].tasks[activeTaskRef.taskIdx];
+      const list = task.subtasks || [];
+      const container = document.getElementById('subtasks-list');
+      container.innerHTML = '';
+
+      const doneCount = list.filter(s => s.done).length;
+      document.getElementById('modal-count').textContent = `${doneCount} / ${list.length} Completed`;
+
+      if (list.length === 0) {
+        container.innerHTML = `<div class="empty-msg">${
+          isReadOnly
+            ? 'No sub-tasks defined for this task.'
+            : 'No sub-tasks defined yet for this task.<br>Type below to add a new sub-task.'
+        }</div>`;
+        return;
+      }
+
+      list.forEach((sub, sIdx) => {
+        const div = document.createElement('div');
+        div.className = `subtask-item ${sub.done ? 'done' : ''}`;
+
+        if (!isReadOnly) {
+          div.draggable = true;
+
+          div.ondragstart = (e) => {
+            draggedSubtaskIdx = sIdx;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => div.classList.add('dragging-subtask'), 0);
+          };
+
+          div.ondragover = (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedSubtaskIdx === null || draggedSubtaskIdx === sIdx) return;
+            div.classList.add('drag-over');
+          };
+
+          div.ondragleave = () => {
+            div.classList.remove('drag-over');
+          };
+
+          div.ondrop = (e) => {
+            e.preventDefault();
+            div.classList.remove('drag-over');
+            if (draggedSubtaskIdx === null || draggedSubtaskIdx === sIdx) return;
+            pushHistory();
+            const movedItem = list.splice(draggedSubtaskIdx, 1)[0];
+            list.splice(sIdx, 0, movedItem);
+            draggedSubtaskIdx = null;
+            saveData();
+            renderSubtasks();
+          };
+
+          div.ondragend = () => {
+            draggedSubtaskIdx = null;
+            div.classList.remove('dragging-subtask');
+            document.querySelectorAll('.subtask-item').forEach(el => el.classList.remove('drag-over'));
+          };
+
+          div.onclick = (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.classList.contains('drag-grip')) return;
+            toggleSubtask(sIdx);
+          };
+        }
+
+        div.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${isReadOnly ? '' : `<span class="drag-grip" title="Drag up or down to reorder">⠿</span>`}
+            <input type="checkbox" ${sub.done ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''} style="width:16px;height:16px;flex-shrink:0;accent-color:#16a34a;cursor:${isReadOnly ? 'default' : 'pointer'};" />
+            <span class="subtask-text" dir="auto">${sub.text}</span>
+          </div>
+          ${isReadOnly ? '' : `<button class="btn btn-danger subtask-delete" title="Delete sub-task" onclick="event.stopPropagation(); deleteSubtask(${sIdx})">✕</button>`}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function addSubtask() {
+      if (isReadOnly || !activeTaskRef) return;
+      const input = document.getElementById('new-subtask-input');
+      const val = input.value.trim();
+      if (!val) return;
+      pushHistory();
+      const task = rowsData[activeTaskRef.rowIdx].tasks[activeTaskRef.taskIdx];
+      task.subtasks.push({ id: Date.now(), text: val, done: false });
+      input.value = '';
+      saveData();
+      renderSubtasks();
+    }
+
+    function toggleSubtask(sIdx) {
+      if (isReadOnly || !activeTaskRef) return;
+      pushHistory();
+      const task = rowsData[activeTaskRef.rowIdx].tasks[activeTaskRef.taskIdx];
+      task.subtasks[sIdx].done = !task.subtasks[sIdx].done;
+      saveData();
+      renderSubtasks();
+    }
+
+    function deleteSubtask(sIdx) {
+      if (isReadOnly || !activeTaskRef) return;
+      pushHistory();
+      const task = rowsData[activeTaskRef.rowIdx].tasks[activeTaskRef.taskIdx];
+      task.subtasks.splice(sIdx, 1);
+      saveData();
+      renderSubtasks();
+    }
+
+    function closeModal() {
+      document.getElementById('subtask-modal').classList.remove('open');
+      activeTaskRef = null;
+    }
+
+    function resetAll() {
+      if (isReadOnly) return;
+      pushHistory();
+      localStorage.removeItem('core_tasks_draggable_v6');
+      rowsData = JSON.parse(JSON.stringify(INITIAL_ROWS));
+      saveData();
+      showToast('Reset to default data');
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !isReadOnly) {
+        if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+        e.preventDefault();
+        undoLast();
+      }
+    });
+
+    applyReadOnlyUI();
+    initLiveSync();
+  </script>
+</body>
+</html>
