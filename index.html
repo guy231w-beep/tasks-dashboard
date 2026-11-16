@@ -736,6 +736,26 @@
     @media (max-width: 600px) {
       .subtask-card .edit-task-bar { flex-wrap: wrap; }
     }
+    .editor-badge {
+      display: none;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+      vertical-align: middle;
+    }
+    body.remote-editor .editor-badge { display: inline-block; }
+    .btn-edit-link {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      color: #ffffff;
+    }
+    .btn-edit-link:hover { background: #d97706; }
+    body.remote-editor .owner-only,
+    body:not(.is-local) .owner-only { display: none !important; }
   </style>
 </head>
 <body>
@@ -746,6 +766,7 @@
       <div>
         <h1 class="top-title">
           <span>CodiQ Product Launch Timeline</span>
+          <span class="editor-badge">✏️ Shared Edit Mode</span>
           <span class="readonly-badge">👁️ Read-Only Mode (View Only)</span>
         </h1>
         <p class="top-subtitle" id="page-subtitle">
@@ -755,15 +776,16 @@
 
       <div class="actions-row">
         <button class="btn edit-only" id="undo-btn" onclick="undoLast()" style="display:none;">↩️ Undo</button>
-        <button class="btn btn-whatsapp edit-only" onclick="downloadReadOnlyFile()">📥 Download file to send</button>
-        <button class="btn btn-share edit-only" onclick="copyReadOnlyLink()">🔗 Copy View-Only Link</button>
+        <button class="btn btn-whatsapp edit-only owner-only" onclick="downloadReadOnlyFile()">📥 Download file to send</button>
+        <button class="btn btn-share edit-only owner-only" onclick="copyReadOnlyLink()">🔗 Copy View-Only Link</button>
+        <button class="btn btn-edit-link edit-only owner-only" onclick="copyEditLink()">✏️ Copy Edit Link</button>
         <button class="btn" id="toggle-preview-btn" onclick="toggleReadOnlyPreview()">👁️ Preview Read-Only Mode</button>
-        <button class="btn btn-danger edit-only" onclick="resetAll()">Reset to Default</button>
+        <button class="btn btn-danger edit-only owner-only" onclick="resetAll()">Reset to Default</button>
       </div>
     </div>
 
     <!-- Live Link Banner (shown in Edit Mode) -->
-    <div class="helper-bar edit-only" id="live-link-bar" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;justify-content:space-between;">
+    <div class="helper-bar edit-only owner-only" id="live-link-bar" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <span id="live-link-status">⏳ <strong>View-Only Link:</strong> checking...</span>
         <code id="live-url-display" style="background:#ffffff;padding:4px 10px;border-radius:6px;border:1px solid #6ee7b7;font-size:13px;color:#047857;user-select:all;">Loading live link...</code>
@@ -771,6 +793,12 @@
       <div style="display:flex;gap:8px;">
         <button class="btn btn-share" style="padding:6px 12px;font-size:12px;" onclick="copyReadOnlyLink()">📋 Copy Link</button>
       </div>
+    </div>
+
+    <!-- Edit Link Banner (owner only) -->
+    <div class="helper-bar edit-only owner-only" id="edit-link-bar" style="background:#fffbeb;border-color:#fde68a;color:#92400e;justify-content:space-between;">
+      <span id="edit-link-status">⏳ <strong>Edit Link:</strong> checking...</span>
+      <button class="btn btn-edit-link" style="padding:6px 12px;font-size:12px;" onclick="copyEditLink()">✏️ Copy Edit Link</button>
     </div>
 
     <!-- Instructions Helper Bar (hidden in read-only mode) -->
@@ -1007,7 +1035,10 @@
     const IS_LOCAL = LOCAL_HOSTS.includes(window.location.hostname);
     const IS_GITHUB_PAGES = window.location.hostname.endsWith('.github.io');
     const POLL_MS = IS_GITHUB_PAGES ? 60000 : 2500;
-    let isLockedReadOnly = !IS_LOCAL || urlParams.get('readonly') === '1' || window.FORCE_READONLY === true;
+    // Remote editing: the temporary live link with ?edit=<secret key> (the server checks the key on every save)
+    const EDIT_KEY = (!IS_LOCAL && !IS_GITHUB_PAGES) ? (urlParams.get('edit') || '') : '';
+    const IS_REMOTE_EDITOR = !!EDIT_KEY;
+    let isLockedReadOnly = (!IS_LOCAL && !IS_REMOTE_EDITOR) || urlParams.get('readonly') === '1' || window.FORCE_READONLY === true;
     let isReadOnly = isLockedReadOnly;
 
     let historyStack = [];
@@ -1112,11 +1143,14 @@
 
     async function syncToServer(jsonStr) {
       try {
-        await fetch('/api/data', {
+        const res = await fetch('/api/data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: EDIT_KEY ? { 'Content-Type': 'application/json', 'X-Edit-Key': EDIT_KEY } : { 'Content-Type': 'application/json' },
           body: jsonStr || JSON.stringify(rowsData)
         });
+        if (res.status === 403) {
+          showToast('⚠️ Not saved: this link does not allow editing. Ask Guy for a new edit link.');
+        }
       } catch (e) {}
     }
 
@@ -1130,6 +1164,43 @@
       return '/api/data?t=' + Date.now();
     }
 
+    if (IS_LOCAL) document.body.classList.add('is-local');
+    if (IS_REMOTE_EDITOR) document.body.classList.add('remote-editor');
+
+    let editLinkUrl = '';
+    let editLinkIsLive = false;
+    async function refreshEditLinkStatus(info) {
+      const el = document.getElementById('edit-link-status');
+      const base = ((info && info.editUrl) || '').replace(/\/$/, '');
+      const key = (info && info.editKey) || '';
+      editLinkUrl = (base && key) ? `${base}/?edit=${key}` : '';
+      let ok = false;
+      if (base) {
+        try {
+          const ctrl = new AbortController();
+          setTimeout(() => ctrl.abort(), 8000);
+          const r = await fetch(base + '/api/info?t=' + Date.now(), { cache: 'no-store', signal: ctrl.signal });
+          ok = r.ok;
+        } catch (e) { ok = false; }
+      }
+      editLinkIsLive = ok && !!editLinkUrl;
+      if (el) {
+        el.innerHTML = editLinkIsLive
+          ? '✏️ <strong>Edit Link is ready.</strong> Send it only to people who should edit. It works while this computer is on; the address may change after sleep.'
+          : '⏸️ <strong>Edit Link is not available right now.</strong> It starts within about a minute after opening the dashboard.';
+      }
+    }
+
+    function copyEditLink() {
+      if (!editLinkIsLive) {
+        showToast('⚠️ The edit link is not available right now. Try again in a minute.');
+        return;
+      }
+      navigator.clipboard.writeText(editLinkUrl).then(() => {
+        showToast('✓ Edit link copied. Send it only to people who should edit.');
+      });
+    }
+
     let linkIsLive = false;
     async function refreshLinkStatus() {
       const statusEl = document.getElementById('live-link-status');
@@ -1138,7 +1209,11 @@
       let url = '';
       try {
         const infoRes = await fetch('/api/info?t=' + Date.now(), { cache: 'no-store' });
-        if (infoRes.ok) url = ((await infoRes.json()).publicUrl || '').replace(/\/$/, '');
+        if (infoRes.ok) {
+          const info = await infoRes.json();
+          url = (info.publicUrl || '').replace(/\/$/, '');
+          refreshEditLinkStatus(info);
+        }
       } catch (e) {}
       livePublicBaseUrl = url;
       let ok = false;
@@ -1189,7 +1264,7 @@
 
     async function initLiveSync() {
       // 1. Public link info + health check (only on the local server, refreshed every 30s)
-      if (!IS_GITHUB_PAGES && !isLockedReadOnly) {
+      if (IS_LOCAL && !isLockedReadOnly) {
         await refreshLinkStatus();
         setInterval(refreshLinkStatus, 30000);
       }
@@ -1201,11 +1276,11 @@
           const serverData = await res.json();
           if (serverData && serverData.empty) {
             // First time server starts: upload our local data (including recovered subtasks)
-            if (!isReadOnly) {
+            if (!isReadOnly && !IS_REMOTE_EDITOR) {
               await syncToServer(JSON.stringify(rowsData));
             }
           } else if (Array.isArray(serverData)) {
-            if (isReadOnly) {
+            if (isReadOnly || IS_REMOTE_EDITOR) {
               rowsData = serverData;
               lastServerJson = JSON.stringify(serverData);
               renderTable();
