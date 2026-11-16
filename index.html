@@ -779,6 +779,7 @@
         <button class="btn btn-whatsapp edit-only owner-only" onclick="downloadReadOnlyFile()">📥 Download file to send</button>
         <button class="btn btn-share edit-only owner-only" onclick="copyReadOnlyLink()">🔗 Copy View-Only Link</button>
         <button class="btn btn-edit-link edit-only owner-only" onclick="copyEditLink()">✏️ Copy Edit Link</button>
+        <button class="btn edit-only" onclick="openAddMemberModal()">👤 Add Team Member</button>
         <button class="btn" id="toggle-preview-btn" onclick="toggleReadOnlyPreview()">👁️ Preview Read-Only Mode</button>
         <button class="btn btn-danger edit-only owner-only" onclick="resetAll()">Reset to Default</button>
       </div>
@@ -891,6 +892,30 @@
         <button class="close-btn" onclick="closeMemberModal()">✕</button>
       </div>
       <div id="member-modal-content" class="subtasks-container" style="max-height:420px;gap:14px;"></div>
+
+      <!-- Rename / remove team member (hidden in read-only) -->
+      <div class="edit-task-bar edit-only" style="flex-wrap:nowrap;">
+        <input id="member-rename-input" class="text-input" type="text" title="Team member name" style="padding:6px 10px;font-size:13px;flex:1;min-width:0;" onkeydown="if(event.key==='Enter') renameActiveMember()" />
+        <button class="btn" style="padding:6px 10px;font-size:12px;white-space:nowrap;" onclick="renameActiveMember()">✏️ Save name</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;white-space:nowrap;" onclick="removeActiveMember()">🗑️ Remove member</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Team Member Modal -->
+  <div id="add-member-modal" class="modal-overlay" onclick="if(event.target===this) closeAddMemberModal()">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0;font-size:18px;font-weight:800;">Add Team Member</h3>
+        </div>
+        <button class="close-btn" onclick="closeAddMemberModal()">✕</button>
+      </div>
+      <input id="new-member-name" class="text-input" type="text" dir="auto" placeholder="Full name, e.g. Dana Levi" onkeydown="if(event.key==='Enter') confirmAddMember()" />
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn" onclick="closeAddMemberModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddMember()">+ Add</button>
+      </div>
     </div>
   </div>
 
@@ -1526,6 +1551,7 @@
       activeMemberIdx = rowIdx;
       const row = rowsData[rowIdx];
       document.getElementById('member-modal-name').textContent = row.member;
+      document.getElementById('member-rename-input').value = row.member;
       const container = document.getElementById('member-modal-content');
       container.innerHTML = '';
 
@@ -1571,6 +1597,69 @@
       }
 
       document.getElementById('member-modal').classList.add('open');
+    }
+
+    // ---- Team members: add / rename / remove ----
+    function openAddMemberModal() {
+      if (isReadOnly) return;
+      document.getElementById('new-member-name').value = '';
+      document.getElementById('add-member-modal').classList.add('open');
+      setTimeout(() => document.getElementById('new-member-name').focus(), 50);
+    }
+
+    function closeAddMemberModal() {
+      document.getElementById('add-member-modal').classList.remove('open');
+    }
+
+    function memberNameTaken(name, exceptIdx) {
+      return rowsData.some((r, i) => i !== exceptIdx && r.member.trim().toLowerCase() === name.toLowerCase());
+    }
+
+    function confirmAddMember() {
+      if (isReadOnly) return;
+      const name = document.getElementById('new-member-name').value.trim();
+      if (!name) return;
+      if (memberNameTaken(name, -1)) {
+        showToast(`⚠️ "${name}" is already in the table`);
+        return;
+      }
+      pushHistory();
+      rowsData.push({ member: name, tasks: [] });
+      saveData();
+      closeAddMemberModal();
+      showToast(`✓ ${name} added. Click an empty cell in their row to add a task.`);
+    }
+
+    function renameActiveMember() {
+      if (isReadOnly || activeMemberIdx === null) return;
+      const name = document.getElementById('member-rename-input').value.trim();
+      const row = rowsData[activeMemberIdx];
+      if (!name || name === row.member) return;
+      if (memberNameTaken(name, activeMemberIdx)) {
+        showToast(`⚠️ "${name}" is already in the table`);
+        return;
+      }
+      pushHistory();
+      row.member = name;
+      saveData();
+      document.getElementById('member-modal-name').textContent = name;
+      showToast('✓ Name saved');
+    }
+
+    function removeActiveMember() {
+      if (isReadOnly || activeMemberIdx === null) return;
+      const row = rowsData[activeMemberIdx];
+      const taskCount = (row.tasks || []).length;
+      const msg = taskCount
+        ? `Remove ${row.member} and their ${taskCount} task(s) from the table?`
+        : `Remove ${row.member} from the table?`;
+      if (!confirm(msg)) return;
+      pushHistory();
+      rowsData.splice(activeMemberIdx, 1);
+      activeMemberIdx = null;
+      saveData();
+      closeMemberModal();
+      showToast(`🗑️ ${row.member} removed (click Undo to restore)`);
     }
 
     function closeMemberModal() {
